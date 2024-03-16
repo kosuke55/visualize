@@ -76,8 +76,11 @@ def fetch_and_prepare_data_for_datatable():
 
 
 def create_time_series_plot():
-    # MongoDBのデータ構造に基づいてデータを準備
+    df = fetch_data()
     plot = go.Figure()
+    if df.empty:
+        plot.update_layout(title="No data available")
+        return plot
 
     plot.add_trace(
         go.Scatter(
@@ -132,6 +135,8 @@ def create_time_series_plot():
 
 def create_pie_chart():
     df = fetch_data()
+    if df.empty:
+        return px.pie(title="No data available")
     latest_success_rate = df.iloc[-1]["Success Rate (%)"]
     pie_data = {
         "labels": ["Success Rate", "Failure Rate"],
@@ -159,6 +164,10 @@ def create_pie_chart():
 def create_ng_analysis_plot():
     df = fetch_data()
     fig = go.Figure()
+    if df.empty:
+        # データが空の場合は空のプロットを返す
+        fig.update_layout(title="No data available")
+        return fig
 
     # 'Suite'内の各テスト項目ごとにNGの数を時系列でプロット
     # すべてのテスト項目名を保存するセット
@@ -210,8 +219,6 @@ external_stylesheets = [
 ]
 # Initialize Dash app with external stylesheet
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-df = fetch_data()
-
 
 # update plots and chart
 @app.callback(
