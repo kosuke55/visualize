@@ -1,13 +1,13 @@
+import os
 import pandas as pd
 from pymongo import MongoClient
 
 # CSVファイルのパス
 csv_file_path = "example_daily_test.csv"
 
-# MongoDBの設定
-mongo_uri = "mongodb://localhost:27017/"  # MongoDBのURI
-db_name = "testDatabase"  # 使用するデータベース名
-collection_name = "testResults"  # 使用するコレクション名
+mongo_uri = os.environ.get("MONGODB_URI")
+db_name = "daily_scenario_test_db"
+collection_name = "daily_scenario_test_collection"
 
 # CSVデータの読み込み
 df = pd.read_csv(csv_file_path)

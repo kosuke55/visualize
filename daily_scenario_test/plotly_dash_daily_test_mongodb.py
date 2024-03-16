@@ -7,12 +7,9 @@ import plotly.graph_objs as go
 import plotly.express as px
 from dash.dependencies import Input, Output
 
-
-# MongoDB接続設定
-MONGO_URI = "mongodb://localhost:27017/"
-DB_NAME = "testDatabase"
-COLLECTION_NAME = "testResults"
-
+MONGO_URI = os.environ.get('MONGODB_URI')
+DB_NAME = "daily_scenario_test_db"
+COLLECTION_NAME = "daily_scenario_test_collection"
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 collection = db[COLLECTION_NAME]
