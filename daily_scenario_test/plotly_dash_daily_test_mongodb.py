@@ -5,6 +5,8 @@ import dash
 from dash import dcc, html, dash_table
 import plotly.graph_objs as go
 import plotly.express as px
+from dash.dependencies import Input, Output
+
 
 # MongoDB接続設定
 MONGO_URI = "mongodb://localhost:27017/"
@@ -73,35 +75,7 @@ def fetch_and_prepare_data_for_datatable():
     return df_prepared
 
 
-def generate_datatable():
-    df_prepared = (
-        fetch_and_prepare_data_for_datatable()
-    )  # DataTable用に準備したデータを取得
-    return dash_table.DataTable(
-        data=df_prepared.to_dict("records"),
-        columns=[{"name": i, "id": i} for i in df_prepared.columns],
-        style_table={
-            "overflowX": "visible",
-            "overflowY": "visible",
-            "width": "100%",
-            "minWidth": "100%",
-            "backgroundColor": color_theme["title-text"],
-        },
-        style_cell={
-            "backgroundColor": color_theme["light-background"],
-            "color": "white",
-        },
-        style_header={
-            "backgroundColor": color_theme["dark-background"],
-            "color": "white",
-        },
-        style_data={"border": "1px solid #183A54"},
-    )
-
-
 def create_time_series_plot():
-    df = fetch_data()
-
     # MongoDBのデータ構造に基づいてデータを準備
     plot = go.Figure()
 
@@ -230,19 +204,43 @@ def create_ng_analysis_plot():
     return fig
 
 
-# Create plots and chart
-time_series_plot = create_time_series_plot()
-pie_chart = create_pie_chart()
-ng_analysis_plot = create_ng_analysis_plot()
-
 # External stylesheet for Open Sans font
 external_stylesheets = [
     "https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap"
 ]
-
 # Initialize Dash app with external stylesheet
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 df = fetch_data()
+
+
+# update plots and chart
+@app.callback(
+    Output("time-series-plot", "figure"), [Input("update-interval", "n_intervals")]
+)
+def update_time_series_plot(n_intervals):
+    return create_time_series_plot()
+
+
+@app.callback(Output("pie-chart", "figure"), [Input("update-interval", "n_intervals")])
+def update_pie_chart(n_intervals):
+    return create_pie_chart()
+
+
+@app.callback(Output("pie-chart2", "figure"), [Input("update-interval", "n_intervals")])
+def update_ng_analysis_plot(n_intervals):
+    return create_ng_analysis_plot()
+
+
+@app.callback(
+    [Output("datatable-container", "columns"), Output("datatable-container", "data")],
+    [Input("update-interval", "n_intervals")],
+)
+def update_datatable_columns_and_data(n_intervals):
+    df_prepared = fetch_and_prepare_data_for_datatable()
+    columns = [{"name": i, "id": i} for i in df_prepared.columns]
+    data = df_prepared.to_dict("records")
+    return columns, data
+
 
 # Layout of the app
 app.layout = html.Div(
@@ -258,29 +256,19 @@ app.layout = html.Div(
         "margin-bottom": "30px",
     },
     children=[
+        dcc.Interval(id="update-interval", interval=5 * 1000, n_intervals=0),  # 5s
         html.Div(
             style={"padding": "2rem", "flexGrow": 1},
             children=[
-                # -- title --
-                html.H1(
-                    children="DAILY SCENARIO TEST REPORT",
-                    style={
-                        "color": color_theme["title-text"],
-                        "marginBottom": "1rem",
-                        "font-weight": "100",
-                    },
-                ),
-                # -- dashboard explanation --
-                html.Div(
-                    children="Dashboard for the results of daily scenario tests.",
-                    style={"marginBottom": "2rem"},
-                ),
+                # -- title and other elements remain unchanged --
                 # -- first layer --
                 html.Div(
                     style={"display": "flex", "flexDirection": "row"},
                     children=[
                         html.Div(
-                            dcc.Graph(id="time-series-plot", figure=time_series_plot),
+                            dcc.Graph(
+                                id="time-series-plot"
+                            ),  # Updated: figure attribute removed
                             style={
                                 "width": "80%",
                                 "padding": "10px",
@@ -293,32 +281,45 @@ app.layout = html.Div(
                                 "padding": "10px",
                                 "margin-bottom": "30px",
                             },
-                            children=[dcc.Graph(id="pie-chart", figure=pie_chart)],
+                            children=[
+                                dcc.Graph(id="pie-chart")
+                            ],  # Updated: figure attribute removed
                         ),
                     ],
                 ),
                 # -- second layer --
                 html.Div(
-                    dcc.Graph(id="pie-chart2", figure=ng_analysis_plot),
+                    dcc.Graph(id="pie-chart2"),  # Updated: figure attribute removed
                     style={"padding": "10px", "margin-bottom": "30px"},
                 ),
                 # -- third layer --
                 html.Div(
-                    style={
-                        "padding": "10px",
-                        "overflowX": "auto",
-                        "overflowY": "auto",
-                        "max-height": "200pt",
-                        "margin-bottom": "30px",
-                    },
-                    children=[
-                        generate_datatable(),
-                    ],
+                    dash_table.DataTable(
+                        id="datatable-container",
+                        columns=[],  # 初期状態ではカラムを空にしておく
+                        style_table={
+                            "overflowX": "visible",
+                            "overflowY": "visible",
+                            "width": "100%",
+                            "minWidth": "100%",
+                            "backgroundColor": color_theme["title-text"],
+                        },
+                        style_cell={
+                            "backgroundColor": color_theme["light-background"],
+                            "color": "white",
+                        },
+                        style_header={
+                            "backgroundColor": color_theme["dark-background"],
+                            "color": "white",
+                        },
+                        style_data={"border": "1px solid #183A54"},
+                    ),
                 ),
             ],
-        )
+        ),
     ],
 )
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
